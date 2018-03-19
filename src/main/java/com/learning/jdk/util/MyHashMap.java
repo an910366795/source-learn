@@ -7,7 +7,7 @@ import java.util.*;
 
 /**
  * @author chengan.liang
- * @deprecated:HashMap源码学习
+ * @deprecated:HashMap源码学习,参考自https://github.com/julycoding/The-Art-Of-Programming-By-July/blob/master/ebook/zh/03.01.md
  * @since 2018-03-17 9:19
  */
 
@@ -663,7 +663,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
          * 2.将节点设置为红色（为什么不置为黑色，因为置为红色不会违背红黑树任意节点到叶子节点的黑节点数目都是相同的原则）
          * 3.通过旋转和换色等方法修正红黑树，让其保持红黑树的特性
          */
-        private TreeNode<K, V> balanceInsertion(TreeNode<K, V> root, TreeNode<K, V> x) {
+        static <K, V> TreeNode<K, V> balanceInsertion(TreeNode<K, V> root, TreeNode<K, V> x) {
 
             x.red = true;
             //xp为父节点，xpp为祖父节点，xppl和xppr为叔节点（其中一个和xp相等，取决于x所在的位置）
@@ -751,16 +751,58 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         }
 
         /**
+         * 删除节点后的自调整方法,从x节点开始调整
+         */
+        static <K, V> TreeNode<K, V> balanceDeletion(TreeNode<K, V> root, TreeNode<K, V> x) {
+            //xpl和xpr为兄弟节点
+            for (TreeNode<K, V> xp, xpl, xpr; ; ) {
+                //情况一：如果节点为空或者节点是根节点，直接返回
+                if (x == null || x == root)
+                    return root;
+                    //情况二：如果父节点为空，说明是根节点，将根节点颜色置为黑色
+                else if ((xp = x.parent) == null) {
+                    x.red = false;
+                    return x;
+                }
+                //情况三：如果当前节点是红色，直接将红色节点置为黑色后返回
+                else if (x.red) {
+                    x.red = false;
+                    return root;
+                }
+                //以下几种情况当前节点都为黑色
+                //在父节点左边的情况
+                else if ((xpl = xp.left) == x) {
+                    /**
+                     * 情况四：当前节点为黑色且兄弟节点为红色（此时父结点和兄弟结点的子结点分为黑色，
+                     *         因为不会出现连续的两个红色节点，否则删除前就不是红黑树了）
+                     * 策略：把父结点染成红色，把兄弟结点染成黑色，然后进行左旋转
+                     */
+
+
+
+                }
+                //在父节点右边的情况
+                else {
+
+                }
+
+                return null;
+
+            }
+
+        }
+
+        /**
          * 红黑树的左旋转
          */
-        private TreeNode<K, V> rotateLeft(TreeNode<K, V> root, TreeNode<K, V> xpp) {
+        static <K, V> TreeNode<K, V> rotateLeft(TreeNode<K, V> root, TreeNode<K, V> xpp) {
             return null;
         }
 
         /**
          * 红黑树的右旋转
          */
-        private TreeNode<K, V> rotateRight(TreeNode<K, V> root, TreeNode<K, V> kvTreeNode) {
+        static <K, V> TreeNode<K, V> rotateRight(TreeNode<K, V> root, TreeNode<K, V> kvTreeNode) {
             return null;
         }
 
