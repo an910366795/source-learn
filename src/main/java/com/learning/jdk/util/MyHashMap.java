@@ -308,7 +308,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         //新的容量大小和阀值
         int newCap, newThr = 0;
         if (oldCap > 0) {
-            //如果旧的容量大小大于容量允许的最大值，将容量大小设置为最大值（最坏的情况为节点大多数会发生hash碰撞
+            //如果旧的容量大小大于容量允许的最大值，将容量大小设置为最大值（
             if (oldCap >= MAXIMUM_CAPACITY) {
                 threShold = Integer.MAX_VALUE;
                 return oldTab;
@@ -341,7 +341,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                     //将旧的桶的值设置为空
                     oldTab[j] = null;
                     if (e.next == null)
-                        //如果当前桶的位置只有一个元素，直接赋值给新的桶即可
+                        //如果当前节点没有next,说明桶的数组位置只有一个元素，
                         //e.hash &(newCap-1)为计算元素在hash桶的位置
                         newTab[e.hash & (newCap - 1)] = e;
 //                    else if (e instanceof TreeNode)
@@ -378,7 +378,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                         Node<K, V> next;
                         do {//循环赋值到新的hash桶中
                             next = e.next;
-                            //如果旧的hashcode & 旧的
+                            //如果hash & 旧的容量大小，说明位置不变
                             if ((e.hash & oldCap) == 0) {
                                 //如果链表尾节点为空,说明当前链表为空将头设置为当前节点
                                 if (loTail == null)
@@ -387,7 +387,9 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                                     loTail.next = e;
                                 loTail = e;
 
-                            } else {
+                            }
+                            //如果hash&oldcap ==1 则新的位置为旧的位置下标+旧的容量大小
+                            else {
                                 if (hiTail == null)
                                     hiHead = e;
                                 else
@@ -489,7 +491,6 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
             super(hash, key, val, next);
         }
 
-
         /**
          * 返回当前节点的根节点
          */
@@ -503,7 +504,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         }
 
         /**
-         * 确保给定的根节点为第一个节点，即确保红黑树的根节点在hash桶数组中
+         * 确保给定的红黑树节点为hash桶中的第一个节点，即确保红黑树的根节点在hash桶数组中
          */
         static <K, V> void moveRootToFront(Node<K, V>[] tab, TreeNode<K, V> root) {
             int n;
@@ -528,7 +529,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                     root.next = first;
                     root.prev = null;
                 }
-                //确保不变性？
+                //确保红黑树完整性
                 assert checkInvariants(root);
             }
         }
@@ -777,7 +778,6 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                      *         因为不会出现连续的两个红色节点，否则删除前就不是红黑树了）
                      * 策略：把父结点染成红色，把兄弟结点染成黑色，然后进行左旋转
                      */
-
 
 
                 }
