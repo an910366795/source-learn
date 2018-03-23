@@ -286,17 +286,97 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
             for (Entry<? extends K, ? extends V> e : m.entrySet()) {
                 K key = e.getKey();
                 V value = e.getValue();
-//                putVal(hash(key), key, value, false, evict);
+                //设置值
+                putVal(hash(key), key, value, false, evict);
+            }
+        }
+    }
+
+    /**
+     * 实现了Map.put和关联的方法
+     *
+     * @param hash         key的hash值
+     * @param key          键值
+     * @param value        value值
+     * @param onlyIfAbsent 为true时，不覆盖原有的值
+     * @param evict        如果为false,则为创造方式
+     * @return 返回一个原有的值，或者返回空如果之前无值
+     */
+    final V putVal(int hash, K key, V value, boolean onlyIfAbsent, boolean evict) {
+        Node<K, V>[] tab;
+        //p为设置值之前hash桶同一个位置的节点
+        Node<K, V> p;
+        //n为当前hash桶的容器大小
+        //i为计算（n-1)&hash之后的值，即节点所在hash桶的位置
+        int n, i;
+        //如果此时hash桶为空，则进行初始化容器大小
+        if ((tab = table) == null || (n = tab.length) == 0) {
+            //如果之前hash桶为空,resize()初始化大小之后,n为默认的hash桶的值为16
+            n = (tab = resize()).length;
+            //如果之前hash桶相对应的位置为空，则直接新建节点放到该位置中
+            if ((p = tab[i = (n - 1) & hash]) == null)
+                tab[i] = newNode(hash, key, value, null);
+            else {
+                Node<K, V> e;
+                K k;
+                //判断：如果插入的节点的key值等于之前hash桶对应位置上的key值
+                if (p.hash == hash && ((k = p.key) == key || (key != null && key.equals(k))))
+                    e = p;
+                else if (p instanceof TreeNode)
+                    //如果hash桶上位置上的节点为红黑树结构，插入红黑树结构中
+                    e = ((TreeNode) p).putTreeVal(this, tab, hash, key, value);
+                else {
+                    //如果为链表结构
+                    for (int binCount = 0; ; ++binCount) {
+                        //循环直到为链表的最后一个节点
+                        if ((e = p.next) == null) {
+                            p.next = newNode(hash, key, value, null);
+                            //如果此时链表长度>=8,将链表结构转化红黑树
+                            if (binCount >= TREEIFY_THRESHOLD - 1)
+                                treeifyBin(tab, hash);
+
+                        }
+                    }
+                }
 
             }
-
         }
+        return null;
+    }
+
+    /**
+     * 将链表结构转化为红黑树，需要满足以下条件
+     * 1.hash桶相同位置上的链表长度大于等于8
+     * 2.当前hash桶的大小大于64
+     * 如果只满足条件1，则只是将当前容器大小扩容为两倍（调用resize（））
+     *
+     * @param tab
+     * @param hash
+     */
+    private void treeifyBin(Node<K, V>[] tab, int hash) {
+        int n, index;
+        Node<K, V> e;
+        if (tab == null || (n = tab.length) > MIN_TREEIFY_CAPACITY)
+            resize();
+        else if ((e = tab[index = (n - 1) & hash]) != null) {
+            TreeNode<K, V> hd = null, tl = null;
+            do {
+
+            } while ((e = e.next) == null);
+        }
+    }
+
+    /**
+     * 构造一个新的Node节点
+     */
+    Node<K, V> newNode(int hash, K key, V value, Node<K, V> next) {
+        return new Node<>(hash, key, value, next);
     }
 
     /**
      * 初始化大小或者将容器大小扩容为当前的两倍。
      *
-     * @return
+     * @return 返回Map的hash桶
      */
     final Node<K, V>[] resize() {
         //将旧的hash桶数据进行复制
@@ -313,8 +393,8 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                 threShold = Integer.MAX_VALUE;
                 return oldTab;
             }
-            //如果旧的容量扩容两倍小于容量最大值且旧的容量大于最小容量值时，将阀值扩容为旧的阀值两倍
-            else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY && oldCap > MIN_TREEIFY_CAPACITY) {
+            //如果旧的容量扩容两倍小于容量最大值且旧的容量大于默认容量值时，将阀值扩容为旧的阀值两倍
+            else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY && oldCap > DEFAULT_CAPACITY) {
                 newThr = oldThr << 1;
             }
         } else if (oldThr > 0)
@@ -471,6 +551,15 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
     @Override
     public Set<Entry<K, V>> entrySet() {
         return null;
+    }
+
+    private <K, V> Node<K, V> replacementNode(Node<K, V> p, Node<K, V> next) {
+        return new Node<>(p.hash, p.key, p.value, next);
+    }
+
+    //构建一个新的节点
+    TreeNode<K, V> newTreeNode(int hash, K key, V value, Node<K, V> next) {
+        return new TreeNode<>(hash, key, value, next);
     }
 
     /**
@@ -778,32 +867,122 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                      *         因为不会出现连续的两个红色节点，否则删除前就不是红黑树了）
                      * 策略：把父结点染成红色，把兄弟结点染成黑色，然后进行左旋转
                      */
+                    if ((xpr = xp.right) != null && xpr.red) {
+                        xpr.red = false;
+                        xp.red = true;
+                        root = rotateLeft(root, xp);
+                        xpr = (xp = x.parent) == null ? null : xp.right;
+                    }
+                    if (xpr == null)
+                        x = xp;
+                    else {
+                        TreeNode<K, V> sl = xpr.left, sr = xpr.right;
+                        if ((sr == null || !sr.red) && (sl == null || !sl.red)) {
+                            xpr.red = true;
+                            x = xp;
+                        } else {
+                            if (sr == null || !sr.red) {
+                                if (sl != null)
+                                    sl.red = false;
+                                xpr.red = true;
+                                root = rotateRight(root, xpr);
+                                xpr = (xp = x.parent) == null ?
+                                        null : xp.right;
+                            }
+                            if (xpr != null) {
+                                xpr.red = (xp == null) ? false : xp.red;
+                                if ((sr = xpr.right) != null)
+                                    sr.red = false;
+                            }
+                            if (xp != null) {
+                                xp.red = false;
+                                root = rotateLeft(root, xp);
+                            }
+                            x = root;
+                        }
+                    }
 
 
                 }
                 //在父节点右边的情况
                 else {
-
+                    if (xpl != null && xpl.red) {
+                        xpl.red = false;
+                        xp.red = true;
+                        root = rotateRight(root, xp);
+                        xpl = (xp = x.parent) == null ? null : xp.left;
+                    }
+                    if (xpl == null)
+                        x = xp;
+                    else {
+                        TreeNode<K, V> sl = xpl.left, sr = xpl.right;
+                        if ((sl == null || !sl.red) &&
+                                (sr == null || !sr.red)) {
+                            xpl.red = true;
+                            x = xp;
+                        } else {
+                            if (sl == null || !sl.red) {
+                                if (sr != null)
+                                    sr.red = false;
+                                xpl.red = true;
+                                root = rotateLeft(root, xpl);
+                                xpl = (xp = x.parent) == null ?
+                                        null : xp.left;
+                            }
+                            if (xpl != null) {
+                                xpl.red = (xp == null) ? false : xp.red;
+                                if ((sl = xpl.left) != null)
+                                    sl.red = false;
+                            }
+                            if (xp != null) {
+                                xp.red = false;
+                                root = rotateRight(root, xp);
+                            }
+                            x = root;
+                        }
+                    }
                 }
-
-                return null;
-
             }
-
         }
 
         /**
          * 红黑树的左旋转
          */
-        static <K, V> TreeNode<K, V> rotateLeft(TreeNode<K, V> root, TreeNode<K, V> xpp) {
-            return null;
+        static <K, V> TreeNode<K, V> rotateLeft(TreeNode<K, V> root, TreeNode<K, V> p) {
+            TreeNode<K, V> r, pp, rl;
+            if (p != null && (r = p.right) != null) {
+                if ((rl = p.right = r.left) != null)
+                    rl.parent = p;
+                if ((pp = r.parent = p.parent) == null)
+                    (root = r).red = false;
+                else if (pp.left == p)
+                    pp.left = r;
+                else
+                    pp.right = r;
+                r.left = p;
+                p.parent = r;
+            }
+            return root;
         }
 
         /**
          * 红黑树的右旋转
          */
-        static <K, V> TreeNode<K, V> rotateRight(TreeNode<K, V> root, TreeNode<K, V> kvTreeNode) {
-            return null;
+        static <K, V> TreeNode<K, V> rotateRight(TreeNode<K, V> root, TreeNode<K, V> p) {
+            TreeNode<K, V> l, pp, lr;
+            if (p != null && (l = p.left) != null) {
+                if ((lr = p.left = l.right) != null)
+                    lr.parent = p;
+                if ((pp = l.parent = p.parent) == null)
+                    (root = l).red = false;
+                else if (pp.right == p)
+                    pp.right = l;
+                else
+                    pp.left = l;
+                l.right = p;
+                p.parent = l;
+            }
+            return root;
         }
 
         /**
@@ -837,11 +1016,63 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                 return false;
             return true;
         }
+
+        /**
+         * 新增一个树节点
+         */
+        public Node<K, V> putTreeVal(MyHashMap<K, V> map, Node<K, V>[] tab, int h, K k, V v) {
+            Class<?> kc = null;
+            //是否进行过树的查找标志，为true时说明已经进行过查找了
+            boolean searched = false;
+            //如果根节点为空，设置当前节点为根节点
+            TreeNode<K, V> root = (parent != null) ? root() : this;
+            for (TreeNode<K, V> p = root; ; ) {
+                //dir为1时，在节点的右边，为-1时在节点的左边
+                int dir, ph;
+                K pk;
+                if ((ph = p.hash) > h)
+                    dir = 1;
+                else if (ph < h)
+                    dir = -1;
+                else if ((pk = p.key) == k || (k != null && k.equals(pk))) {
+                    //key值相同的情况，直接返回根节点
+                    return p;
+                } else if ((kc == null && (kc = comparableClassFor(k)) == null) || (dir = compareComparables(kc, k, pk)) == 0) {
+                    //key值不同，但是产生hash碰撞的情况并且无法根据key的class类型比较的情况
+                    //查找左右子节点中是否存在相同的树节点，如果存在，直接返回这个树节点，不做调整
+                    if (!searched) {
+                        TreeNode<K, V> q, ch;
+                        searched = true;
+                        //左右子树查找
+                        if (((ch = p.left) != null && ((q = ch.find(h, k, kc)) != null)) ||
+                                ((ch = p.right) != null) && ((q = ch.find(h, k, kc)) != null))
+                            return q;
+                    }
+                    dir = tieBreakOrder(k, pk);
+                }
+
+                TreeNode<K, V> xp = p;
+                if ((p = (dir <= 0) ? p.left : p.right) == null) {
+                    Node<K, V> xpn = xp.next;
+                    //构造一个新的节点
+                    TreeNode<K, V> x = map.newTreeNode(h, k, v, xpn);
+                    //比较并放置节点的位置
+                    if (dir <= 0)
+                        xp.left = x;
+                    else
+                        xp.right = x;
+                    xp.next = x;
+                    x.parent = x.prev = xp;
+                    if (xpn != null)
+                        ((TreeNode) xpn).prev = x;
+                    //重新调整红黑树,确保红黑树的性质和根节点落在根节点上面
+                    moveRootToFront(tab, balanceDeletion(root, x));
+                    return null;
+                }
+            }
+        }
     }
 
-    private <K, V> Node<K, V> replacementNode(Node<K, V> p, Node<K, V> next) {
-        return new Node<>(p.hash, p.key, p.value, next);
-    }
 
     public static void main(String[] args) {
 
