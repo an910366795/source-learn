@@ -6,8 +6,11 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 /**
+ *
  * @author chengan.liang
- * @deprecated:HashMap源码学习,参考自https://github.com/julycoding/The-Art-Of-Programming-By-July/blob/master/ebook/zh/03.01.md
+ * @deprecated:HashMap源码学习,hashMap主要方法的实现
+ * 参考：https://github.com/julycoding/The-Art-Of-Programming-By-July/blob/master/ebook/zh/03.01.md
+ *       https://tech.meituan.com/java-hashmap.html
  * @since 2018-03-17 9:19
  */
 
@@ -67,12 +70,12 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         }
 
         @Override
-        public K getKey() {
+        public final K getKey() {
             return key;
         }
 
         @Override
-        public V getValue() {
+        public final V getValue() {
             return value;
         }
 
@@ -140,9 +143,8 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
             Type t;
             ParameterizedType p;
             //如果x属于字符串，直接返回String.class
-            if ((c = x.getClass()) == String.class) {
+            if ((c = x.getClass()) == String.class)
                 return c;
-            }
             if ((ts = c.getGenericInterfaces()) != null) {
                 for (int i = 0; i < ts.length; i++) {
                     if (((t = ts[i]) instanceof ParameterizedType)
@@ -292,6 +294,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         }
     }
 
+
     /**
      * 实现了Map.put和关联的方法
      *
@@ -309,39 +312,61 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         //n为当前hash桶的容器大小
         //i为计算（n-1)&hash之后的值，即节点所在hash桶的位置
         int n, i;
-        //如果此时hash桶为空，则进行初始化容器大小
-        if ((tab = table) == null || (n = tab.length) == 0) {
-            //如果之前hash桶为空,resize()初始化大小之后,n为默认的hash桶的值为16
+        if ((tab = table) == null || (n = tab.length) == 0)
+            //如果之前hash桶为空,则进行初始化容器大小，resize()初始化大小之后,n为默认的hash桶的值为16
             n = (tab = resize()).length;
+        if ((p = tab[i = (n - 1) & hash]) == null) {
             //如果之前hash桶相对应的位置为空，则直接新建节点放到该位置中
-            if ((p = tab[i = (n - 1) & hash]) == null)
-                tab[i] = newNode(hash, key, value, null);
+            tab[i] = newNode(hash, key, value, null);
+        } else {
+            Node<K, V> e;
+            K k;
+            //判断：如果插入的节点的key值等于之前hash桶对应位置上的key值
+            if (p.hash == hash && ((k = p.key) == key || (key != null && key.equals(k))))
+                e = p;
+            else if (p instanceof TreeNode)
+                //如果hash桶上位置上的节点为红黑树结构，插入红黑树结构中
+                e = ((TreeNode) p).putTreeVal(this, tab, hash, key, value);
             else {
-                Node<K, V> e;
-                K k;
-                //判断：如果插入的节点的key值等于之前hash桶对应位置上的key值
-                if (p.hash == hash && ((k = p.key) == key || (key != null && key.equals(k))))
-                    e = p;
-                else if (p instanceof TreeNode)
-                    //如果hash桶上位置上的节点为红黑树结构，插入红黑树结构中
-                    e = ((TreeNode) p).putTreeVal(this, tab, hash, key, value);
-                else {
-                    //如果为链表结构
-                    for (int binCount = 0; ; ++binCount) {
-                        //循环直到为链表的最后一个节点
-                        if ((e = p.next) == null) {
-                            p.next = newNode(hash, key, value, null);
-                            //如果此时链表长度>=8,将链表结构转化红黑树
-                            if (binCount >= TREEIFY_THRESHOLD - 1)
-                                treeifyBin(tab, hash);
-
-                        }
+                //如果为链表结构
+                for (int binCount = 0; ; ++binCount) {
+                    //循环直到为链表的最后一个节点
+                    if ((e = p.next) == null) {
+                        p.next = newNode(hash, key, value, null);
+                        //如果此时链表长度>=8,将链表结构转化红黑树
+                        if (binCount >= TREEIFY_THRESHOLD - 1)
+                            treeifyBin(tab, hash);
+                        break;
                     }
+                    //如果插入的key值与之前的存在相同的直接返回旧值
+                    if (e.hash == hash && ((k = e.key) == key || (key != null && key.equals(k))))
+                        break;
+                    p = e;
                 }
-
+            }
+            //如果e不为空，说明之前存在key相同的节点，则设置新值返回旧值
+            if (e != null) {
+                V oldValue = e.value;
+                if (!onlyIfAbsent || oldValue == null)
+                    e.value = value;
+                afterNodeAccess(e);
+                return oldValue;
             }
         }
+        ++modCount;
+        if (++size > threShold)
+            resize();
+        afterNodeInsertion(evict);
         return null;
+    }
+
+    private void afterNodeInsertion(boolean evict) {
+    }
+
+    private void afterNodeAccess(Node<K, V> e) {
+    }
+
+    private void afterNodeRemoval(Node<K, V> node) {
     }
 
     /**
@@ -356,14 +381,33 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
     private void treeifyBin(Node<K, V>[] tab, int hash) {
         int n, index;
         Node<K, V> e;
-        if (tab == null || (n = tab.length) > MIN_TREEIFY_CAPACITY)
+        if (tab == null || (n = tab.length) < MIN_TREEIFY_CAPACITY)
             resize();
         else if ((e = tab[index = (n - 1) & hash]) != null) {
             TreeNode<K, V> hd = null, tl = null;
             do {
-
-            } while ((e = e.next) == null);
+                //将Node节点变为TreeNode
+                TreeNode<K, V> p = replacementTreeNode(e, null);
+                //将新建的TreeNode变成链表
+                if (tl == null)
+                    hd = p;
+                else {
+                    p.prev = tl;
+                    tl.next = p;
+                }
+                tl = p;
+            } while ((e = e.next) != null);
+            if ((tab[index] = hd) != null)
+                //链表转化为红黑树操作
+                hd.treeify(tab);
         }
+    }
+
+    /**
+     * 根据一个Node节点构建一个新的TreeNode
+     */
+    private TreeNode<K, V> replacementTreeNode(Node<K, V> e, Node<K, V> next) {
+        return new TreeNode<>(e.hash, e.key, e.value, next);
     }
 
     /**
@@ -424,9 +468,9 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                         //如果当前节点没有next,说明桶的数组位置只有一个元素，
                         //e.hash &(newCap-1)为计算元素在hash桶的位置
                         newTab[e.hash & (newCap - 1)] = e;
-//                    else if (e instanceof TreeNode)
-//                        //如果之前的元素为红黑树节点
-//                        ((ThreeNode < K, V > e).split(this, newTab, j, oldCap);
+                    else if (e instanceof TreeNode)
+                        //如果之前的元素为红黑树节点
+                        ((TreeNode<K, V>) e).split(this, newTab, j, oldCap);
                     else {
                         /**
                          * loHead和loTail为原hash桶的链表位置上的数据头和尾
@@ -495,53 +539,168 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
 
     @Override
     public int size() {
-        return 0;
+        return size;
     }
 
     @Override
     public boolean isEmpty() {
-        return false;
+        return size == 0;
     }
 
+    /**
+     * \
+     * 是否包含某个key
+     */
     @Override
     public boolean containsKey(Object key) {
-        return false;
+        return getNode(hash(key), key) != null;
     }
 
+    /**
+     * 是否包含某个value
+     */
     @Override
     public boolean containsValue(Object value) {
+        Node<K, V>[] tab;
+        V v;
+        if ((tab = table) != null && size > 0) {
+            for (int i = 0; i < tab.length; i++) {
+                for (Node<K, V> e = tab[i]; e != null; e = e.next) {
+                    if ((v = e.value) == value || (value != null && value.equals(v)))
+                        return true;
+                }
+            }
+        }
         return false;
     }
 
+    /**
+     * Map接口的get实现
+     */
     @Override
     public V get(Object key) {
+        Node<K, V> e;
+        return (e = getNode(hash(key), key)) == null ? null : e.value;
+    }
+
+    /**
+     * 根据hash值，获取key值
+     */
+    private Node<K, V> getNode(int hash, Object key) {
+        Node<K, V>[] tab;
+        Node<K, V> first, e;
+        int n;
+        K k;
+        //如果hash桶不为空
+        if ((tab = table) != null && (n = tab.length) > 0 && (first = tab[(n - 1) & hash]) != null) {
+            //如果等于hash桶数组上的元素直接返回
+            if (first.hash == hash && ((k = first.key) == key || key.equals(k)))
+                return first;
+            if ((e = first.next) != null) {
+                //如果为红黑树节点
+                if (first instanceof TreeNode)
+                    return ((TreeNode<K, V>) first).getTreeNode(hash, key);
+                do {
+                    //为链表时
+                    if (e.hash == hash && ((k = e.key) == key && (key.equals(k))))
+                        return e;
+                } while ((e = e.next) != null);
+            }
+        }
         return null;
     }
 
+    /**
+     * 设置key，value
+     */
     @Override
     public V put(K key, V value) {
+        return putVal(hash(key), key, value, false, true);
+    }
+
+    /**
+     * 根据key移除节点
+     *
+     * @param key
+     * @return
+     */
+    @Override
+    public V remove(Object key) {
+        Node<K, V> e;
+        return (e = removeNode(hash(key), key, null, false, true)) == null ? null : e.value;
+    }
+
+    /**
+     * 移除Node
+     *
+     * @param hash       key的hash值
+     * @param key        key值
+     * @param value      value值
+     * @param matchValue 是否匹配删除
+     * @param movable    是否可移除元素
+     * @return
+     */
+    private Node<K, V> removeNode(int hash, Object key, Object value, boolean matchValue, boolean movable) {
+        Node<K, V>[] tab;
+        Node<K, V> p;
+        int n, index;
+
+        if ((tab = table) != null && (n = tab.length) > 0 && (p = tab[index = (n - 1) & hash]) != null) {
+            Node<K, V> node = null, e;
+            K k;
+            V v;
+            //如果等于hash桶数组上的节点
+            if (p.hash == hash && ((k = p.key) == key || (k != null && key.equals(k))))
+                node = p;
+            else if ((e = p.next) != null) {
+                //如果是红黑树节点
+                if (p instanceof TreeNode) {
+                    node = ((TreeNode) p).getTreeNode(hash, key);
+                } else {
+                    do {
+                        if ((e.hash == hash) && ((k = e.key) == key || (key != null && key.equals(k)))) {
+                            node = e;
+                            break;
+                        }
+                        p = e;
+
+                    } while ((e = p.next) != null);
+                }
+            }
+            if (node != null && (!matchValue || (v = node.value) == value && (value != null && value.equals(v)))) {
+                if (node instanceof TreeNode)
+                    ((TreeNode<K, V>) node).removeTreeNode(this, tab, movable);
+                else if (node == p)
+                    tab[index] = node.next;
+                else
+                    p.next = node.next;
+                ++modCount;
+                --size;
+                afterNodeRemoval(node);
+                return node;
+            }
+        }
         return null;
     }
 
-    @Override
-    public V remove(Object key) {
-        return null;
-    }
 
     @Override
     public void putAll(Map<? extends K, ? extends V> m) {
-
+        putMapEntries(m, true);
     }
 
     @Override
     public void clear() {
-
+        Node<K, V>[] tab;
+        modCount++;
+        if ((tab = table) != null && size > 0) {
+            size = 0;
+            for (int i = 0; i < tab.length; i++) {
+                tab[i] = null;
+            }
+        }
     }
 
-    @Override
-    public Set<K> keySet() {
-        return null;
-    }
 
     @Override
     public Collection<V> values() {
@@ -684,6 +843,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
 
         /**
          * 将TreeNode链表转化为红黑树结构
+         * 以当前节点为入口
          */
         final void treeify(Node<K, V>[] tab) {
             TreeNode<K, V> root = null;
@@ -1071,10 +1231,177 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                 }
             }
         }
+
+        /**
+         * 移除树节点
+         *
+         * @param map
+         * @param tab
+         * @param movable
+         */
+        public void removeTreeNode(MyHashMap<K, V> map, Node<K, V>[] tab, boolean movable) {
+            int n;
+            if (tab == null || (n = tab.length) == 0)
+                return;
+            int index = (n - 1) & hash;
+            TreeNode<K, V> first = (TreeNode<K, V>) tab[index], root = first, rl;
+            TreeNode<K, V> succ = (TreeNode<K, V>) next, pred = prev;
+            if (pred == null)
+                tab[index] = first = succ;
+            else
+                pred.next = succ;
+            if (succ != null)
+                succ.prev = pred;
+            if (first == null)
+                return;
+            if (root.parent != null)
+                root = root.root();
+            if (root == null || root.right == null ||
+                    (rl = root.left) == null || rl.left == null) {
+                tab[index] = first.untreeify(map);  // too small
+                return;
+            }
+            TreeNode<K, V> p = this, pl = left, pr = right, replacement;
+            if (pl != null && pr != null) {
+                TreeNode<K, V> s = pr, sl;
+                while ((sl = s.left) != null) // find successor
+                    s = sl;
+                boolean c = s.red;
+                s.red = p.red;
+                p.red = c; // swap colors
+                TreeNode<K, V> sr = s.right;
+                TreeNode<K, V> pp = p.parent;
+                if (s == pr) { // p was s's direct parent
+                    p.parent = s;
+                    s.right = p;
+                } else {
+                    TreeNode<K, V> sp = s.parent;
+                    if ((p.parent = sp) != null) {
+                        if (s == sp.left)
+                            sp.left = p;
+                        else
+                            sp.right = p;
+                    }
+                    if ((s.right = pr) != null)
+                        pr.parent = s;
+                }
+                p.left = null;
+                if ((p.right = sr) != null)
+                    sr.parent = p;
+                if ((s.left = pl) != null)
+                    pl.parent = s;
+                if ((s.parent = pp) == null)
+                    root = s;
+                else if (p == pp.left)
+                    pp.left = s;
+                else
+                    pp.right = s;
+                if (sr != null)
+                    replacement = sr;
+                else
+                    replacement = p;
+            } else if (pl != null)
+                replacement = pl;
+            else if (pr != null)
+                replacement = pr;
+            else
+                replacement = p;
+            if (replacement != p) {
+                TreeNode<K, V> pp = replacement.parent = p.parent;
+                if (pp == null)
+                    root = replacement;
+                else if (p == pp.left)
+                    pp.left = replacement;
+                else
+                    pp.right = replacement;
+                p.left = p.right = p.parent = null;
+            }
+
+            TreeNode<K, V> r = p.red ? root : balanceDeletion(root, replacement);
+
+            if (replacement == p) {  // detach
+                TreeNode<K, V> pp = p.parent;
+                p.parent = null;
+                if (pp != null) {
+                    if (p == pp.left)
+                        pp.left = null;
+                    else if (p == pp.right)
+                        pp.right = null;
+                }
+            }
+            if (movable)
+                moveRootToFront(tab, r);
+        }
+
+        /**
+         * 分割红黑树，将树节点分割到另一个树或者将红黑树转化为链表如果分割后的树元素不足6个，
+         * 只有map进行resize操作时才会调用此方法
+         *
+         * @param map   map
+         * @param tab   map的hash桶
+         * @param index 分割的位置
+         * @param bit   旧的容量大小
+         */
+        final void split(MyHashMap<K, V> map, Node<K, V>[] tab, int index, int bit) {
+            TreeNode<K, V> b = this;
+            //先将树节点构建成链表红黑树，如果构建后的链表长度大于等于8则将链表转化为树结构
+            TreeNode<K, V> loHead = null, loTail = null;
+            TreeNode<K, V> hiHead = null, hiTail = null;
+            //转化为链表后的低位和高位长度
+            int lc = 0, hc = 0;
+            //可参考resize中链表扩容的代码
+            for (TreeNode<K, V> e = b, next; e != null; e = next) {
+                next = (TreeNode<K, V>) e.next;
+                e.next = null;
+                if ((e.hash & bit) == 0) {
+                    if ((e.prev = loTail) == null)
+                        loHead = e;
+                    else
+                        loTail.next = e;
+                    loTail = e;
+                    ++lc;
+                } else {
+                    if ((e.prev = hiTail) == null)
+                        hiHead = e;
+                    else
+                        hiTail.next = e;
+                    hiTail = e;
+                    ++hc;
+                }
+            }
+
+            if (loHead != null) {
+                if (lc < UNTREEIFY_THRESHOLD)
+                    tab[index] = loHead.untreeify(map);
+                else {
+                    tab[index] = loHead;
+                    if (hiHead != null)
+                        loHead.treeify(tab);
+                }
+            }
+            if (hiHead != null) {
+                if (hc < UNTREEIFY_THRESHOLD)
+                    tab[index + bit] = hiHead.untreeify(map);
+                else {
+                    tab[index + bit] = hiTail;
+                    if (loHead != null)
+                        hiHead.treeify(tab);
+                }
+            }
+        }
     }
 
 
     public static void main(String[] args) {
+
+        HashMap<Integer, Object> map = new HashMap<Integer, Object>();
+
+        for (; ; ) {
+            int num = new Random().nextInt();
+            map.put(num, "hello");
+
+        }
+
 
     }
 }
