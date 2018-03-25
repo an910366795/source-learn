@@ -1394,13 +1394,18 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
 
     public static void main(String[] args) {
 
-        HashMap<Integer, Object> map = new HashMap<Integer, Object>();
+        MyHashMap<String, Object> map = new MyHashMap<>();
 
-        for (; ; ) {
-            int num = new Random().nextInt();
-            map.put(num, "hello");
 
-        }
+        map.put("1",1);
+        map.put("2",1);
+        map.put("3",1);
+        map.put("4",1);
+        map.put("5",1);
+        map.put("6",1);
+        map.put("7",1);
+        map.put("8",1);
+        map.put("9",1);
 
 
     }
