@@ -6,11 +6,9 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 /**
- *
  * @author chengan.liang
- * @deprecated:HashMap源码学习,hashMap主要方法的实现
- * 参考：https://github.com/julycoding/The-Art-Of-Programming-By-July/blob/master/ebook/zh/03.01.md
- *       https://tech.meituan.com/java-hashmap.html
+ * @deprecated:HashMap源码学习,hashMap主要方法的实现 参考：https://github.com/julycoding/The-Art-Of-Programming-By-July/blob/master/ebook/zh/03.01.md
+ * https://tech.meituan.com/java-hashmap.html
  * @since 2018-03-17 9:19
  */
 
@@ -483,16 +481,16 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                          *         只要计算新的n-1的最高位数1 & hash相对应位数上的值，如果为0则是原来的位置，如果为1
                          *         则为原来的位置加上旧的容量大小（等同于e.hash & oldCap）
                          *   举例：Node1 的hash 为 0100000100010000 0000101110001011
-                         *         Node2 的hash 为 0100000100010000 0000101110011011
-                         *         原容量大小为16，通过公式计算两个Node的位置相同，均为数组下标为11的位置,如下：
-                         *              Node1:0100000100010000 0000101110001011 & 0100000100010000 0000000000001111 = 01011(11)
-                         *              Node2:0100000100010000 0000101110011011 & 0100000100010000 0000000000001111 = 01011(11)
+                         *        Node2 的hash 为 0100000100010000 0000101110011011
+                         *         原容量大小为16，通过公式计算两个Node的位置相同(hash&(n-1))，均为数组下标为11的位置,如下：
+                         *              Node1:0100000100010000 0000101110001011 & 0000000000000000 0000000000001111 = 01011(11)
+                         *              Node2:0100000100010000 0000101110011011 & 0000000000000000 0000000000001111 = 01011(11)
                          *         扩容之后，容量大小为32，通过公式计算两个Node的位置，Node1为11，Node2为27，如下：
-                         *              Node1:0100000100010000 0000101110001011 & 0100000100010000 0000000000011111 = 01011(11)
-                         *              Node2:0100000100010000 0000101110011011 & 0100000100010000 0000000000011111 = 011011(27)
+                         *              Node1:0100000100010000 0000101110001011 & 0000000000000000 0000000000011111 = 01011(11)
+                         *              Node2:0100000100010000 0000101110011011 & 0000000000000000 0000000000011111 = 011011(27)
                          *   所以只要知道扩容后高一位的1& hash对应位置上的数值即可得出链表上的元素在新的hash桶中的位置，即等效于e.hash & oldCap,如下
-                         *              Node1:0100000100010000 0000101110001011 & 0100000100010000 000000000010000 = 0
-                         *              Node2:0100000100010000 0000101110011011 & 0100000100010000 000000000010000 = 010000(16)
+                         *              Node1:0100000100010000 0000101110001011 & 0000000000000000 000000000010000 = 0
+                         *              Node2:0100000100010000 0000101110011011 & 0000000000000000 000000000010000 = 010000(16)
                          *    这样就避免了1.7之前扩容后每个节点都要重新计算hashcode和位置
                          * 2.当(e.hash & oldCap) !=0时为 原来的位置+oldCap(原容量大小)，原理同上
                          */
@@ -512,7 +510,7 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
                                 loTail = e;
 
                             }
-                            //如果hash&oldcap ==1 则新的位置为旧的位置下标+旧的容量大小
+                            //如果hash&oldcap !=0 则新的位置为旧的位置下标+旧的容量大小
                             else {
                                 if (hiTail == null)
                                     hiHead = e;
@@ -1397,15 +1395,15 @@ public class MyHashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clo
         MyHashMap<String, Object> map = new MyHashMap<>();
 
 
-        map.put("1",1);
-        map.put("2",1);
-        map.put("3",1);
-        map.put("4",1);
-        map.put("5",1);
-        map.put("6",1);
-        map.put("7",1);
-        map.put("8",1);
-        map.put("9",1);
+        map.put("1", 1);
+        map.put("2", 1);
+        map.put("3", 1);
+        map.put("4", 1);
+        map.put("5", 1);
+        map.put("6", 1);
+        map.put("7", 1);
+        map.put("8", 1);
+        map.put("9", 1);
 
 
     }
